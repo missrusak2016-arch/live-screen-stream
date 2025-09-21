@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔥 LIVE Screen Stream</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { margin: 0; background: #000; }
+        #video { width: 100vw; height: 100vh; object-fit: contain; }
+        .status { 
+            position: fixed; top: 10px; left: 10px; 
+            background: rgba(0,0,0,0.8); color: #fff; 
+            padding: 10px; border-radius: 5px; font-family: Arial; 
+            z-index: 1000;
+        }
+        .controls { 
+            position: fixed; bottom: 20px; left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(0,0,0,0.8); padding: 10px; 
+            border-radius: 20px; z-index: 1000;
+        }
+        button { 
+            background: #007bff; color: white; border: none; 
+            padding: 10px 20px; margin: 0 5px; border-radius: 15px; 
+            cursor: pointer; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">🟢 Ожидание трансляции...</div>
+    <img id="video">
+    
+    <div class="controls">
+        <button onclick="connectStream()">▶️ Подключиться</button>
+        <button onclick="fullscreen()">📺 Полный экран</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const status = document.querySelector('.status');
+        let isConnected = false;
+        let frameCount = 0;
+        let reconnectAttempts = 0;
+        
+        // Функция подключения к трансляции
+        async function connectStream() {
+            if (isConnected) {
+                status.textContent = '🟢 Уже подключено';
+                return;
+            }
+            
+            isConnected = true;
+            status.textContent = '🟡 Подключаемся...';
+            reconnectAttempts = 0;
+            
+            // Основной цикл трансляции
+            while (isConnected && reconnectAttempts < 10) {
+                try {
+                    // Добавляем случайное число чтобы избежать кэширования
+                    const random = Math.random();
+                    const response = await fetch(`https://api.jsonbin.io/v3/b/YOUR_BIN_ID/latest?cache=${random}`);
+                    
+                    if (!response.ok) throw new Error('Ошибка сервера');
+                    
+                    const data = await response.json();
+                    
+                    if (data.record && data.record.frame) {
+                        video.src = data.record.frame;
+                        frameCount++;
+                        status.textContent = `🟢 LIVE [кадров: ${frameCount}]`;
+                        reconnectAttempts = 0; // Сброс счетчика переподключений
+                    }
+                } catch (error) {
+                    console.log('Ошибка:', error);
+                    reconnectAttempts++;
+                    status.textContent = `🔴 Ошибка подключения (попытка ${reconnectAttempts}/10)`;
+                }
+                
+                // Ждем 100ms перед следующим кадром
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            if (reconnectAttempts >= 10) {
+                status.textContent = '🔴 Не удалось подключиться';
+            }
+            isConnected = false;
+        }
+        
+        // Полноэкранный режим
+        function fullscreen() {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        }
+        
+        // Автоподключение при загрузке
+        window.onload = function() {
+            status.textContent = '🟡 Готов к подключению';
+        };
+    </script>
+</body>
+</html>
